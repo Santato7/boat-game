@@ -70,7 +70,7 @@ public class Boat extends Entity {
             currentBoost -= 1;
             lastBoostUseTime = currentTime;
         }
-    };
+    }
 
     @Override
     public void draw(Graphics g) {
