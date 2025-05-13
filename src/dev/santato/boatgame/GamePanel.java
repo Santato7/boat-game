@@ -36,6 +36,13 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         setFocusable(true);
         addKeyListener(this);
 
+        loadImages();
+
+        boat = new Boat(570, 570, 240, 180, 8, 12, this, imgBoatLeft, imgBoatRight);
+        entities.add(boat);
+    }
+
+    private void loadImages() {
         try {
             backgroundGif = new ImageIcon(getClass().getResource("/dev/santato/boatgame/resources/images/agua.gif"));
             imgBoatRight = ImageIO.read(getClass().getResource("/dev/santato/boatgame/resources/images/barco_direita.png"));
@@ -51,9 +58,6 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         } catch (Exception e) {
             e.printStackTrace();
         }
-
-        boat = new Boat(570, 570, 240, 180, 8, 12, this, imgBoatLeft, imgBoatRight);
-        entities.add(boat);
     }
 
     public void startGame() {
@@ -71,8 +75,9 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         gameOver = false;
         entities.clear();
         boat.setX(570);
-        boat.setY(590);
+        boat.setY(570);
         entities.add(boat);
+        SoundPlayer.playBackgroundMusic("/dev/santato/boatgame/resources/audio/background_music.wav");
         timer.restart();
 
         repaint();
