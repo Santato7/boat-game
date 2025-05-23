@@ -1,8 +1,6 @@
 package dev.santato.boatgame;
 
-import dev.santato.boatgame.entity.Boat;
-import dev.santato.boatgame.entity.Entity;
-import dev.santato.boatgame.entity.Trash;
+import dev.santato.boatgame.entity.*;
 import dev.santato.boatgame.sound.SoundPlayer;
 
 import javax.imageio.ImageIO;
@@ -16,17 +14,19 @@ import java.util.List;
 
 public class GamePanel extends JPanel implements ActionListener, KeyListener {
     private int score = 0;
+    private int minimumTrashSpeed = 2;
     private boolean movingLeft, movingRight;
     private boolean usingBoost = false;
     private final Random rand = new Random();
     private Timer timer;
     private boolean gameStarted = false;
-    private int lives = 3;
     private boolean gameOver = false;
 
     private ImageIcon backgroundGif;
     private Image heartImage;
     private BufferedImage imgBoatRight, imgBoatLeft;
+    private BufferedImage boostRefillImage;
+    private BufferedImage lifeRefillImage;
     private BufferedImage[] trashImages;
 
     private final Boat boat;
@@ -38,7 +38,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
 
         loadImages();
 
-        boat = new Boat(570, 570, 240, 180, 8, 12, this, imgBoatLeft, imgBoatRight);
+        boat = new Boat(570, 570, 240, 180, 8, this, 3, 12, imgBoatLeft, imgBoatRight);
         entities.add(boat);
     }
 
@@ -49,11 +49,14 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
             imgBoatLeft = ImageIO.read(getClass().getResource("/dev/santato/boatgame/resources/images/barco_esquerda.png"));
             heartImage = ImageIO.read(getClass().getResource("/dev/santato/boatgame/resources/images/heart.png"));
             heartImage = heartImage.getScaledInstance(64, 64, Image.SCALE_SMOOTH);
+            boostRefillImage = ImageIO.read(getClass().getResource("/dev/santato/boatgame/resources/images/boost-refill.png"));
+            lifeRefillImage = ImageIO.read(getClass().getResource("/dev/santato/boatgame/resources/images/heart.png"));
 
             trashImages = new BufferedImage[] {
-                    ImageIO.read(getClass().getResource("/dev/santato/boatgame/resources/images/lixo1.png")),
-                    ImageIO.read(getClass().getResource("/dev/santato/boatgame/resources/images/lata.png")),
-                    ImageIO.read(getClass().getResource("/dev/santato/boatgame/resources/images/lata2.png")),
+                ImageIO.read(getClass().getResource("/dev/santato/boatgame/resources/images/lixo1.png")),
+                ImageIO.read(getClass().getResource("/dev/santato/boatgame/resources/images/lata.png")),
+                ImageIO.read(getClass().getResource("/dev/santato/boatgame/resources/images/lata2.png")),
+                ImageIO.read(getClass().getResource("/dev/santato/boatgame/resources/images/tambor.png"))
             };
         } catch (Exception e) {
             e.printStackTrace();
@@ -71,11 +74,12 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
 
     private void restartGame() {
         score = 0;
-        lives = 3;
         gameOver = false;
         entities.clear();
+        boat.setLives(3);
         boat.setX(570);
         boat.setY(570);
+        boat.fillBoost();
         entities.add(boat);
         SoundPlayer.playBackgroundMusic("/dev/santato/boatgame/resources/audio/background_music.wav");
         timer.restart();
@@ -93,7 +97,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         }
     }
 
-    private void checkTrashCollisions() {
+    private void checkCollisions() {
         for (Entity entity : entities) {
             if (entity instanceof Trash trash && trash.isAlive()) {
                 if (trash.getBounds().intersects(boat.getBounds())) {
@@ -103,11 +107,19 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
                 } else if (trash.getY() > getHeight()) {
                     trash.kill();
                     SoundPlayer.playSound("/dev/santato/boatgame/resources/audio/damage_compat.wav");
-                    lives--;
+                    boat.setLives(boat.getLives() - 1);
 
-                    if (lives <= 0) {
+                    if (boat.getLives() <= 0) {
                         gameOver = true;
                     }
+                }
+            } else if (entity instanceof PowerUp powerUp && powerUp.isAlive()) {
+                if (powerUp.getBounds().intersects(boat.getBounds())) {
+                    powerUp.applyEffect(boat);
+                    powerUp.kill();
+                    SoundPlayer.playSound("/dev/santato/boatgame/resources/audio/score_compat.wav");
+                } else if (powerUp.getY() > getHeight()) {
+                    powerUp.kill();
                 }
             }
         }
@@ -117,12 +129,37 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         entities.removeIf(entity -> !entity.isAlive());
     }
 
+    private void spawnEntities() {
+        spawnTrash();
+        spawnPowerUp();
+    }
 
     private void spawnTrash() {
         if (rand.nextInt(70) == 0) {
             int x = rand.nextInt(getWidth() - 170) + 50;
-            int speed = 2 + rand.nextInt(5);
+            int speed = minimumTrashSpeed + rand.nextInt(5);
+            if (score >= 25) {
+                speed += 2;
+            }
             entities.add(new Trash(x, 30, 50, 50, speed, this, randomTrashImage()));
+        }
+    }
+
+    private void spawnPowerUp() {
+        if (rand.nextInt(500) == 0) {
+            int x = rand.nextInt(getWidth() - 170) + 50;
+            int speed = 2 + rand.nextInt(5);
+
+            int type = rand.nextInt(2);
+
+            PowerUp powerUp;
+            if (type == 0) {
+                powerUp = new BoostRefill(x, 30, 50, 50, speed, this, boostRefillImage);
+            } else {
+                powerUp = new LifeRefill(x, 30, 50, 50, speed, this, lifeRefillImage);
+            }
+
+            entities.add(powerUp);
         }
     }
 
@@ -140,11 +177,11 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
     private void drawLives(Graphics g) {
         ImageIcon heartIcon = new ImageIcon(heartImage);
         int heartWidth = heartIcon.getIconWidth();
-        int totalWidth = heartWidth * lives;
+        int totalWidth = heartWidth * boat.getLives();
         int spacing = 5;
         int heartsX = (getWidth() - totalWidth - 2 * spacing) / 2;
         int heartY = 20;
-        for (int i = 0; i < lives; i++) {
+        for (int i = 0; i < boat.getLives(); i++) {
             g.drawImage(heartImage, heartsX + i * (heartWidth + spacing), heartY, 50, 50,this);
         }
     }
@@ -160,9 +197,9 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         g.setColor(Color.BLACK);
         g.drawString("Pontuação: " + score, getWidth() / 2 - 150, getHeight() / 2 + 60);
 
-        g.setFont(new Font("Arial", Font.BOLD, 32));
+        g.setFont(new Font("Arial", Font.BOLD, 26));
         g.setColor(Color.BLACK);
-        g.drawString("Pressione SPACE", getWidth() / 2 - 130, getHeight() / 2 + 120);
+        g.drawString("Pressione R para jogar novamente", getWidth() / 2 - 205, getHeight() / 2 + 120);
 
         timer.stop();
     }
@@ -172,9 +209,9 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
         boat.setMovement(movingLeft, movingRight, usingBoost);
 
         updateEntities();
-        checkTrashCollisions();
+        checkCollisions();
         removeDeadEntities();
-        spawnTrash();
+        spawnEntities();
 
         repaint();
     }
@@ -200,7 +237,7 @@ public class GamePanel extends JPanel implements ActionListener, KeyListener {
 
     @Override
     public void keyPressed(KeyEvent e) {
-        if (gameOver && e.getKeyCode() == KeyEvent.VK_SPACE) {
+        if (gameOver && e.getKeyCode() == KeyEvent.VK_R) {
             restartGame();
         } else {
             if (e.getKeyCode() == KeyEvent.VK_LEFT) movingLeft = true;

@@ -5,7 +5,7 @@ import java.awt.*;
 
 public class Game {
     public static void main(String[] args) {
-        JFrame frame = new JFrame("Boat Game");
+        JFrame frame = new JFrame("AquaMarine");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setResizable(false);
         frame.setSize(1380, 820);
