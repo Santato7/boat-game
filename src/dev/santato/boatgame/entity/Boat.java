@@ -9,10 +9,12 @@ enum Direction {
 }
 
 public class Boat extends Entity {
+    private int lives;
+    private final int maxLives = 5;
     private final int maxBoost = 150;
     private int currentBoost = 150;
-    private final int boostRechargeRate = 2;
-    private final int boostRechargeDelay = 1500;
+    private final int boostRechargeRate = 1;
+    private final int boostRechargeDelay = 2000;
     private long lastBoostUseTime = 0;
 
     private boolean usingBoost;
@@ -22,9 +24,10 @@ public class Boat extends Entity {
 
     private final BufferedImage imgLeft, imgRight;
 
-    public Boat(int startX, int startY, int width, int height, int speed, int boostSpeed, JPanel panel, BufferedImage imgLeft, BufferedImage imgRight) {
+    public Boat(int startX, int startY, int width, int height, int speed, JPanel panel, int lives, int boostSpeed, BufferedImage imgLeft, BufferedImage imgRight) {
         super(startX, startY, width, height, speed, panel);
 
+        this.lives = lives;
         this.boostSpeed = boostSpeed;
         this.imgLeft = imgLeft;
         this.imgRight = imgRight;
@@ -41,11 +44,23 @@ public class Boat extends Entity {
         g.fillRect(x, y, width, height);
 
         int currentBoostWidth = (int) ((double) currentBoost / maxBoost * width);
-        g.setColor(new Color(0, 255, 0));  // Cor verde para o boost
+        g.setColor(new Color(0, 255, 0));
         g.fillRect(x, y, currentBoostWidth, height);
 
         g.setColor(Color.BLACK);
         g.drawRect(x, y, width, height);
+    }
+
+    public void fillBoost() {
+        this.currentBoost = this.maxBoost;
+    }
+
+    public int getLives(){
+        return this.lives;
+    }
+
+    public void setLives(int lives){
+        this.lives = lives;
     }
 
     @Override
